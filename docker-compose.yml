@@ -1,0 +1,66 @@
+# Optional infrastructure for the documented stack (SYSTEM_DESIGN.md §9, UNIFY.MD §12).
+#
+# The application runs WITHOUT these services: the queue, rate-limit counters,
+# search and persistence all have in-process fallbacks (see audit.md §3).
+# Start them only when you want the "real" integrations:
+#
+#   docker compose up -d
+#   set ELASTICSEARCH_URL=http://localhost:9200   (search -> real Elasticsearch)
+#   set REDIS_URL=redis://localhost:6379           (available for BullMQ swap-in)
+#
+# NOTE (verified during audit): the Redis shipped with this machine is 3.0.504,
+# which BullMQ cannot use (it needs >= 6.2) — that is why `redis:7-alpine`
+# below, or any Redis >= 6.2, is required before moving queue.ts onto BullMQ.
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: reachinbox-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: reachinbox-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Optional: NeonDB is a hosted Postgres, so no container is required.
+# If you want a local Postgres to develop the Drizzle migration against:
+#
+#   postgres:
+#     image: postgres:16-alpine
+#     environment:
+#       POSTGRES_USER: reachinbox
+#       POSTGRES_PASSWORD: reachinbox
+#       POSTGRES_DB: reachinbox
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - pg-data:/var/lib/postgresql/data
+
+volumes:
+  redis-data:
+  es-data:
+#  pg-data:

@@ -1,0 +1,6 @@
+{
+  "name": "ReachInbox Email Job Scheduler",
+  "description": "Production-grade bulk email job scheduler with BullMQ queue architecture, per-sender hourly rate limiting, Ethereal SMTP delivery, restart persistence, and Slack alerts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
